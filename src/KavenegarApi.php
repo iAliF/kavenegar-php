@@ -3,6 +3,8 @@
 namespace Kavenegar;
 
 use Kavenegar\Enums\ApiLogs;
+use Kavenegar\Enums\Status;
+use Kavenegar\Enums\Type;
 use Kavenegar\Exceptions\ApiException;
 use Kavenegar\Exceptions\BaseRuntimeException;
 use Kavenegar\Exceptions\HttpException;
@@ -334,17 +336,14 @@ class KavenegarApi
      * Update the account settings
      *
      * @param ApiLogs|string $apiLogs (Optional) Api log status
-     * @param string $dailyReport (Optional) 'Set' enabled to enable the daily report.
-     * @param string $debug (Optional) Set 'enabled' to enable the debug mode. In debug mode, your message won't be sent.
+     * @param Status|string $dailyReport (Optional) 'Set' enabled to enable the daily report.
+     * @param Status|string $debug (Optional) Set 'enabled' to enable the debug mode. In debug mode, your message won't be sent.
      * @param string $defaultSender (Optional) Set the default sender phone number
      * @param int $minCreditAlarm (Optional) Set the minimum credit to alert
-     * @param string $resendFailed (Optional) set 'enabled' to resend the failed messages
+     * @param Status|string $resendFailed (Optional) set 'enabled' to resend the failed messages
      * @return mixed
      */
-    // Todo => Update the doc
-    // Todo: Enum for api logs
-    // Todo: Enum for 'resend failed
-    public function AccountConfig($apiLogs = 'justfaults', $dailyReport = 'disabled', $debug = 'disabled', $defaultSender = null, $minCreditAlarm = null, $resendFailed = null)
+    public function AccountConfig($apiLogs = ApiLogs::JUST_FOR_FAULT, $dailyReport = Status::DISABLED, $debug = Status::DISABLED, $defaultSender = null, $minCreditAlarm = null, $resendFailed = Status::ENABLED)
     {
         $path = $this->get_path("config", "account");
         $params = array(
@@ -366,12 +365,10 @@ class KavenegarApi
      * @param string $token2 (Optional) Token2
      * @param string $token3 (Optional) Token3
      * @param string $template Defined template name
-     * @param string $type (sms|call)
+     * @param Type|string $type Type of message
      * @param string $tag Tag name
      * @return mixed
      */
-
-    // Todo => enum for type
     public function VerifyLookup($receptor, $token, $token2, $token3, $template, $type = null, $tag = null)
     {
         $path = $this->get_path("lookup", "verify");

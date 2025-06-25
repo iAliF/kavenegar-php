@@ -2,9 +2,7 @@
 
 namespace Kavenegar\Enums;
 
-abstract class ApiLogs extends General
+abstract class ApiLogs extends Status
 {
-    const  Justforfault = "justforfault";
-    const  Enabled = "enabled";
-    const  Disabled = "disabled";
+    const  JUST_FOR_FAULT = "justforfault";
 }
