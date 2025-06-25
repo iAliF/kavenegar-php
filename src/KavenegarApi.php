@@ -48,29 +48,28 @@ class KavenegarApi
      */
     public function Send($sender, $receptor, $message, $date = null, $type = null, $localId = null, $hide = 0, $tag = null)
     {
-        if (is_array($receptor)) {
-            $receptor = implode(",", $receptor);
-        }
-        if (is_array($localId)) {
-            $localId = implode(",", $localId);
-        }
-        $path = $this->get_path("send");
+        $path = $this->getPath("send");
         $params = array(
-            "receptor" => $receptor,
+            "receptor" => $this->parseInput($receptor),
             "sender" => $sender,
             "message" => $message,
             "date" => $date,
             "type" => $type,
-            "localid" => $localId,
+            "localid" => $this->parseInput($localId),
             "hide" => $hide,
             "tag" => $tag
         );
         return $this->execute($path, $params);
     }
 
-    protected function get_path($method, $base = 'sms')
+    protected function getPath($method, $base = 'sms')
     {
         return sprintf(self::API_PATH, $this->insecure ? "http" : "https", $this->apiKey, $base, $method);
+    }
+
+    protected function parseInput($input)
+    {
+        return is_array($input) ? implode(",", $input) : $input;
     }
 
     protected function execute($url, $data = null)
@@ -80,10 +79,7 @@ class KavenegarApi
             'Content-Type: application/x-www-form-urlencoded',
             'charset: utf-8'
         );
-        $fields_string = "";
-        if (!is_null($data)) {
-            $fields_string = http_build_query($data);
-        }
+        $fieldsString = !is_null($data) ? http_build_query($data) : "";
         $handle = curl_init();
         curl_setopt($handle, CURLOPT_URL, $url);
         curl_setopt($handle, CURLOPT_HTTPHEADER, $headers);
@@ -91,7 +87,7 @@ class KavenegarApi
         curl_setopt($handle, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($handle, CURLOPT_POST, true);
-        curl_setopt($handle, CURLOPT_POSTFIELDS, $fields_string);
+        curl_setopt($handle, CURLOPT_POSTFIELDS, $fieldsString);
 
         $response = curl_exec($handle);
         $code = curl_getinfo($handle, CURLINFO_HTTP_CODE);
@@ -143,7 +139,7 @@ class KavenegarApi
         if (!is_null($localMessageId) && !is_array($localMessageId)) {
             $localMessageId = array_fill(0, $repeat, $localMessageId);
         }
-        $path = $this->get_path("sendarray");
+        $path = $this->getPath("sendarray");
         $params = array(
             "receptor" => json_encode($receptor),
             "sender" => json_encode($sender),
@@ -165,9 +161,9 @@ class KavenegarApi
      */
     public function Status($messageId)
     {
-        $path = $this->get_path("status");
+        $path = $this->getPath("status");
         $params = array(
-            "messageid" => is_array($messageId) ? implode(",", $messageId) : $messageId
+            "messageid" => $this->parseInput($messageId)
         );
         return $this->execute($path, $params);
     }
@@ -180,9 +176,9 @@ class KavenegarApi
      */
     public function StatusLocalMessageId($localId)
     {
-        $path = $this->get_path("statuslocalmessageid");
+        $path = $this->getPath("statuslocalmessageid");
         $params = array(
-            "localid" => is_array($localId) ? implode(",", $localId) : $localId
+            "localid" => $this->parseInput($localId)
         );
         return $this->execute($path, $params);
     }
@@ -196,9 +192,9 @@ class KavenegarApi
     public function Select($messageId)
     {
         $params = array(
-            "messageid" => is_array($messageId) ? implode(",", $messageId) : $messageId
+            "messageid" => $this->parseInput($messageId)
         );
-        $path = $this->get_path("select");
+        $path = $this->getPath("select");
         return $this->execute($path, $params);
     }
 
@@ -212,7 +208,7 @@ class KavenegarApi
      */
     public function SelectOutbox($startDate, $endDate, $sender = null)
     {
-        $path = $this->get_path("selectoutbox");
+        $path = $this->getPath("selectoutbox");
         $params = array(
             "startdate" => $startDate,
             "enddate" => $endDate,
@@ -230,7 +226,7 @@ class KavenegarApi
      */
     public function LatestOutbox($pageSize = null, $sender = null)
     {
-        $path = $this->get_path("latestoutbox");
+        $path = $this->getPath("latestoutbox");
         $params = array(
             "pagesize" => $pageSize,
             "sender" => $sender
@@ -248,7 +244,7 @@ class KavenegarApi
      */
     public function CountOutbox($startDate, $endDate, $status = 0)
     {
-        $path = $this->get_path("countoutbox");
+        $path = $this->getPath("countoutbox");
         $params = array(
             "startdate" => $startDate,
             "enddate" => $endDate,
@@ -265,9 +261,9 @@ class KavenegarApi
      */
     public function Cancel($messageId)
     {
-        $path = $this->get_path("cancel");
+        $path = $this->getPath("cancel");
         $params = array(
-            "messageid" => is_array($messageId) ? implode(",", $messageId) : $messageId
+            "messageid" => $this->parseInput($messageId)
         );
         return $this->execute($path, $params);
 
@@ -282,7 +278,7 @@ class KavenegarApi
      */
     public function Receive($lineNumber, $isRead = 0)
     {
-        $path = $this->get_path("receive");
+        $path = $this->getPath("receive");
         $params = array(
             "linenumber" => $lineNumber,
             "isread" => $isRead
@@ -301,7 +297,7 @@ class KavenegarApi
      */
     public function CountInbox($startDate, $endDate = null, $lineNumber = null, $isRead = 0)
     {
-        $path = $this->get_path("countinbox");
+        $path = $this->getPath("countinbox");
         $params = array(
             "startdate" => $startDate,
             "enddate" => $endDate,
@@ -328,7 +324,7 @@ class KavenegarApi
      */
     public function AccountInfo()
     {
-        $path = $this->get_path("info", "account");
+        $path = $this->getPath("info", "account");
         return $this->execute($path);
     }
 
@@ -345,7 +341,7 @@ class KavenegarApi
      */
     public function AccountConfig($apiLogs = ApiLogs::JUST_FOR_FAULT, $dailyReport = Status::DISABLED, $debug = Status::DISABLED, $defaultSender = null, $minCreditAlarm = null, $resendFailed = Status::ENABLED)
     {
-        $path = $this->get_path("config", "account");
+        $path = $this->getPath("config", "account");
         $params = array(
             "apilogs" => $apiLogs,
             "dailyreport" => $dailyReport,
@@ -371,7 +367,7 @@ class KavenegarApi
      */
     public function VerifyLookup($receptor, $token, $token2, $token3, $template, $type = null, $tag = null)
     {
-        $path = $this->get_path("lookup", "verify");
+        $path = $this->getPath("lookup", "verify");
         $params = array(
             "receptor" => $receptor,
             "token" => $token,
@@ -402,7 +398,7 @@ class KavenegarApi
      */
     public function CallMakeTTS($receptor, $message, $date = null, $localId = null, $tag = null)
     {
-        $path = $this->get_path("maketts", "call");
+        $path = $this->getPath("maketts", "call");
         $params = array(
             "receptor" => $receptor,
             "message" => $message,
