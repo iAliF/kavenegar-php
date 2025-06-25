@@ -4,10 +4,8 @@ namespace Kavenegar\Exceptions;
 
 class ApiException extends BaseRuntimeException
 {
-	public function getName()
+    public function getName()
     {
         return 'ApiException';
     }
 }
-
-?>
