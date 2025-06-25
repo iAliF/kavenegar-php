@@ -12,7 +12,7 @@ use Kavenegar\Exceptions\HttpException;
 class KavenegarApi
 {
     const API_PATH = "%s://api.kavenegar.com/v1/%s/%s/%s.json/";
-    const VERSION = "1.2.2";
+    const VERSION = "1.2.3";
 
     protected $apiKey;
     protected $insecure;
@@ -115,9 +115,9 @@ class KavenegarApi
     /**
      * Send multiple messages from multiple senders to multiple receptors
      *
-     * @param string $sender Senders phone numbers
+     * @param string|array $sender Senders phone numbers
      * @param string|array $receptor Receptors mobile numbers
-     * @param string $message Texts to be sent
+     * @param string|array $message Texts to be sent
      * @param int $date (Optional) UNIX timestamp of when the message should be sent. If null, message is sent immediately.
      * @param array $type Type of messages
      * @param array $localMessageId Message IDs in local database
@@ -258,9 +258,9 @@ class KavenegarApi
     }
 
     /**
-     * Cancel the scheduled message
+     * Cancel the scheduled message(s)
      *
-     * @param int $messageId Unique ID of message
+     * @param int|array|string $messageId Unique ID(s) of message(s)
      * @return mixed
      */
     public function Cancel($messageId)
