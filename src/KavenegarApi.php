@@ -2,16 +2,23 @@
 
 namespace Kavenegar;
 
+use Kavenegar\Enums\ApiLogs;
 use Kavenegar\Exceptions\ApiException;
+use Kavenegar\Exceptions\BaseRuntimeException;
 use Kavenegar\Exceptions\HttpException;
 
 class KavenegarApi
 {
-    const APIPATH = "%s://api.kavenegar.com/v1/%s/%s/%s.json/";
+    const API_PATH = "%s://api.kavenegar.com/v1/%s/%s/%s.json/";
     const VERSION = "1.2.2";
 
     protected $apiKey;
     protected $insecure;
+
+    /**
+     * @param string $apiKey : Kavenegar API Key
+     * @param bool $insecure : Set false if you want to use http instead of https
+     */
     public function __construct($apiKey, $insecure = false)
     {
         if (!extension_loaded('curl')) {
@@ -24,13 +31,26 @@ class KavenegarApi
         $this->insecure = $insecure;
     }
 
-    public function Send($sender, $receptor, $message, $date = null, $type = null, $localid = null)
+    /**
+     * Send a specific message to one or multiple receptors
+     *
+     * @param string $sender Sender's phone number
+     * @param string|array $receptor Receptor(s) mobile number(s)
+     * @param string $message Message text to be sent
+     * @param int $date (Optional) UNIX timestamp of when the message should be sent. If null, message is sent immediately.
+     * @param string $type (Optional) Message type
+     * @param int|array|string $localId (Optional) ID in local database
+     * @param int $hide (Optional) If set to 1, recipient's number won't be shown in list.
+     * @param string $tag (Optional) Tag name
+     * @return mixed
+     */
+    public function Send($sender, $receptor, $message, $date = null, $type = null, $localId = null, $hide = 0, $tag = null)
     {
         if (is_array($receptor)) {
             $receptor = implode(",", $receptor);
         }
-        if (is_array($localid)) {
-            $localid = implode(",", $localid);
+        if (is_array($localId)) {
+            $localId = implode(",", $localId);
         }
         $path = $this->get_path("send");
         $params = array(
@@ -39,14 +59,16 @@ class KavenegarApi
             "message" => $message,
             "date" => $date,
             "type" => $type,
-            "localid" => $localid
+            "localid" => $localId,
+            "hide" => $hide,
+            "tag" => $tag
         );
         return $this->execute($path, $params);
     }
 
     protected function get_path($method, $base = 'sms')
     {
-        return sprintf(self::APIPATH, $this->insecure ? "http" : "https", $this->apiKey, $base, $method);
+        return sprintf(self::API_PATH, $this->insecure ? "http" : "https", $this->apiKey, $base, $method);
     }
 
     protected function execute($url, $data = null)
@@ -76,7 +98,7 @@ class KavenegarApi
         if ($curl_errno) {
             throw new HttpException($curl_error, $curl_errno);
         }
-        $json_response = json_decode($response);
+        $json_response = json_decode($response, false);
         if ($code !== 200 && is_null($json_response)) {
             throw new HttpException("Request have errors", $code);
         }
@@ -88,7 +110,20 @@ class KavenegarApi
         return $json_response->entries;
     }
 
-    public function SendArray($sender, $receptor, $message, $date = null, $type = null, $localmessageid = null)
+    /**
+     * Send multiple messages from multiple senders to multiple receptors
+     *
+     * @param string $sender Senders phone numbers
+     * @param string|array $receptor Receptors mobile numbers
+     * @param string $message Texts to be sent
+     * @param int $date (Optional) UNIX timestamp of when the message should be sent. If null, message is sent immediately.
+     * @param array $type Type of messages
+     * @param array $localMessageId Message IDs in local database
+     * @param int $hide (Optional) If set to 1, recipient's number won't be shown in list.
+     * @param string $tag (Optional) Tag name
+     * @return mixed
+     */
+    public function SendArray($sender, $receptor, $message, $date = null, $type = null, $localMessageId = null, $hide = 0, $tag = null)
     {
         if (!is_array($receptor)) {
             $receptor = (array)$receptor;
@@ -103,8 +138,8 @@ class KavenegarApi
         if (!is_null($type) && !is_array($type)) {
             $type = array_fill(0, $repeat, $type);
         }
-        if (!is_null($localmessageid) && !is_array($localmessageid)) {
-            $localmessageid = array_fill(0, $repeat, $localmessageid);
+        if (!is_null($localMessageId) && !is_array($localMessageId)) {
+            $localMessageId = array_fill(0, $repeat, $localMessageId);
         }
         $path = $this->get_path("sendarray");
         $params = array(
@@ -113,148 +148,231 @@ class KavenegarApi
             "message" => json_encode($message),
             "date" => $date,
             "type" => json_encode($type),
-            "localmessageid" => json_encode($localmessageid)
+            "localmessageid" => json_encode($localMessageId),
+            "hide" => $hide,
+            "tag" => $tag
         );
         return $this->execute($path, $params);
     }
 
-    public function Status($messageid)
+    /**
+     * Fetch status of message(s) by Message ID
+     *
+     * @param int|array|string $messageId : Unique ID(s) of message(s)
+     * @return mixed
+     */
+    public function Status($messageId)
     {
         $path = $this->get_path("status");
         $params = array(
-            "messageid" => is_array($messageid) ? implode(",", $messageid) : $messageid
+            "messageid" => is_array($messageId) ? implode(",", $messageId) : $messageId
         );
         return $this->execute($path, $params);
     }
 
-    public function StatusLocalMessageId($localid)
+    /**
+     * Fetch status of message(s) by Local ID
+     *
+     * @param int|array|string $localId Local ID(s) of message(s) in database
+     * @return mixed
+     */
+    public function StatusLocalMessageId($localId)
     {
         $path = $this->get_path("statuslocalmessageid");
         $params = array(
-            "localid" => is_array($localid) ? implode(",", $localid) : $localid
+            "localid" => is_array($localId) ? implode(",", $localId) : $localId
         );
         return $this->execute($path, $params);
     }
 
-    public function Select($messageid)
+    /**
+     * Recover data of sent message
+     *
+     * @param int|array|string $messageId : Unique ID(s) of message(s) to recover
+     * @return mixed
+     */
+    public function Select($messageId)
     {
         $params = array(
-            "messageid" => is_array($messageid) ? implode(",", $messageid) : $messageid
+            "messageid" => is_array($messageId) ? implode(",", $messageId) : $messageId
         );
         $path = $this->get_path("select");
         return $this->execute($path, $params);
     }
 
-    public function SelectOutbox($startdate, $enddate, $sender)
+    /**
+     * List of outbox messages within specific time range
+     *
+     * @param int $startDate : UNIX timestamp of start date
+     * @param int $endDate : UNIX timestamp of end date
+     * @param string $sender (Optional) Sender phone number to filter
+     * @return mixed
+     */
+    public function SelectOutbox($startDate, $endDate, $sender = null)
     {
         $path = $this->get_path("selectoutbox");
         $params = array(
-            "startdate" => $startdate,
-            "enddate" => $enddate,
+            "startdate" => $startDate,
+            "enddate" => $endDate,
             "sender" => $sender
         );
         return $this->execute($path, $params);
     }
 
-    public function LatestOutbox($pagesize, $sender)
+    /**
+     * List of latest sent messages
+     *
+     * @param int $pageSize (Optional) Size of the required messages
+     * @param string $sender (Optional) Sender phone number to filter
+     * @return mixed
+     */
+    public function LatestOutbox($pageSize = null, $sender = null)
     {
         $path = $this->get_path("latestoutbox");
         $params = array(
-            "pagesize" => $pagesize,
+            "pagesize" => $pageSize,
             "sender" => $sender
         );
         return $this->execute($path, $params);
     }
 
-    public function CountOutbox($startdate, $enddate, $status = 0)
+    /** Count of outbox messages within specific time range
+     *
+     *
+     * @param int $startDate UNIX timestamp of start date
+     * @param int $endDate UNIX timestamp of end date
+     * @param int $status (Optional) Message status to filter
+     * @return mixed
+     */
+    public function CountOutbox($startDate, $endDate, $status = 0)
     {
         $path = $this->get_path("countoutbox");
         $params = array(
-            "startdate" => $startdate,
-            "enddate" => $enddate,
+            "startdate" => $startDate,
+            "enddate" => $endDate,
             "status" => $status
         );
         return $this->execute($path, $params);
     }
 
-    public function Cancel($messageid)
+    /**
+     * Cancel the scheduled message
+     *
+     * @param int $messageId Unique ID of message
+     * @return mixed
+     */
+    public function Cancel($messageId)
     {
         $path = $this->get_path("cancel");
         $params = array(
-            "messageid" => is_array($messageid) ? implode(",", $messageid) : $messageid
+            "messageid" => is_array($messageId) ? implode(",", $messageId) : $messageId
         );
         return $this->execute($path, $params);
 
     }
 
-    public function Receive($linenumber, $isread = 0)
+    /**
+     * List of received messages
+     *
+     * @param string $lineNumber Target mobile number
+     * @param int $isRead Set 0 to get unread messages
+     * @return mixed
+     */
+    public function Receive($lineNumber, $isRead = 0)
     {
         $path = $this->get_path("receive");
         $params = array(
-            "linenumber" => $linenumber,
-            "isread" => $isread
+            "linenumber" => $lineNumber,
+            "isread" => $isRead
         );
         return $this->execute($path, $params);
     }
 
-    public function CountInbox($startdate, $enddate, $linenumber, $isread = 0)
+    /**
+     * Count of inboxed messages on the all numbers or a specific number
+     *
+     * @param int $startDate UNIX timestamp of start date
+     * @param int $endDate (Optional) UNIX timestamp of end date
+     * @param string $lineNumber (Optional) Pass mobile number to filter the results
+     * @param int $isRead Set 0 to count unread messages, 1 to read
+     * @return mixed
+     */
+    public function CountInbox($startDate, $endDate = null, $lineNumber = null, $isRead = 0)
     {
         $path = $this->get_path("countinbox");
         $params = array(
-            "startdate" => $startdate,
-            "enddate" => $enddate,
-            "linenumber" => $linenumber,
-            "isread" => $isread
+            "startdate" => $startDate,
+            "enddate" => $endDate,
+            "linenumber" => $lineNumber,
+            "isread" => $isRead
         );
         return $this->execute($path, $params);
     }
 
-    public function CountPostalcode($postalcode)
+    public function CountPostalcode($postalCode)
     {
-        $path = $this->get_path("countpostalcode");
-        $params = array(
-            "postalcode" => $postalcode
-        );
-        return $this->execute($path, $params);
+        throw new BaseRuntimeException("Method is removed");
     }
 
-    public function SendbyPostalcode($sender, $postalcode, $message, $mcistartindex, $mcicount, $mtnstartindex, $mtncount, $date)
+    public function SendbyPostalcode($sender, $postalCode, $message, $mciStartIndex, $mciCount, $mtnStartIndex, $mtnCount, $date)
     {
-        $path = $this->get_path("sendbypostalcode");
-        $params = array(
-            "postalcode" => $postalcode,
-            "sender" => $sender,
-            "message" => $message,
-            "mcistartindex" => $mcistartindex,
-            "mcicount" => $mcicount,
-            "mtnstartindex" => $mtnstartindex,
-            "mtncount" => $mtncount,
-            "date" => $date
-        );
-        return $this->execute($path, $params);
+        throw new BaseRuntimeException("Method is removed");
     }
 
+    /**
+     * Get account info
+     *
+     * @return mixed
+     */
     public function AccountInfo()
     {
         $path = $this->get_path("info", "account");
         return $this->execute($path);
     }
 
-    public function AccountConfig($apilogs, $dailyreport, $debug, $defaultsender, $mincreditalarm, $resendfailed)
+    /**
+     * Update the account settings
+     *
+     * @param ApiLogs|string $apiLogs (Optional) Api log status
+     * @param string $dailyReport (Optional) 'Set' enabled to enable the daily report.
+     * @param string $debug (Optional) Set 'enabled' to enable the debug mode. In debug mode, your message won't be sent.
+     * @param string $defaultSender (Optional) Set the default sender phone number
+     * @param int $minCreditAlarm (Optional) Set the minimum credit to alert
+     * @param string $resendFailed (Optional) set 'enabled' to resend the failed messages
+     * @return mixed
+     */
+    // Todo => Update the doc
+    // Todo: Enum for api logs
+    // Todo: Enum for 'resend failed
+    public function AccountConfig($apiLogs = 'justfaults', $dailyReport = 'disabled', $debug = 'disabled', $defaultSender = null, $minCreditAlarm = null, $resendFailed = null)
     {
         $path = $this->get_path("config", "account");
         $params = array(
-            "apilogs" => $apilogs,
-            "dailyreport" => $dailyreport,
+            "apilogs" => $apiLogs,
+            "dailyreport" => $dailyReport,
             "debug" => $debug,
-            "defaultsender" => $defaultsender,
-            "mincreditalarm" => $mincreditalarm,
-            "resendfailed" => $resendfailed
+            "defaultsender" => $defaultSender,
+            "mincreditalarm" => $minCreditAlarm,
+            "resendfailed" => $resendFailed
         );
         return $this->execute($path, $params);
     }
 
-    public function VerifyLookup($receptor, $token, $token2, $token3, $template, $type = null)
+    /**
+     * Verify users using OTP code or send necessary messages to user
+     *
+     * @param string $receptor Receptor phone number
+     * @param string $token Token
+     * @param string $token2 (Optional) Token2
+     * @param string $token3 (Optional) Token3
+     * @param string $template Defined template name
+     * @param string $type (sms|call)
+     * @param string $tag Tag name
+     * @return mixed
+     */
+
+    // Todo => enum for type
+    public function VerifyLookup($receptor, $token, $token2, $token3, $template, $type = null, $tag = null)
     {
         $path = $this->get_path("lookup", "verify");
         $params = array(
@@ -277,14 +395,23 @@ class KavenegarApi
         return $this->execute($path, $params);
     }
 
-    public function CallMakeTTS($receptor, $message, $date = null, $localid = null)
+    /**
+     * @param string $receptor Receptor phone number
+     * @param string $message Message text to be sent
+     * @param int $date (Optional) UNIX timestamp of when the message should be sent. If null, message is sent immediately.
+     * @param int $localId (Optional) ID in local database
+     * @param string $tag Tag name
+     * @return mixed
+     */
+    public function CallMakeTTS($receptor, $message, $date = null, $localId = null, $tag = null)
     {
         $path = $this->get_path("maketts", "call");
         $params = array(
             "receptor" => $receptor,
             "message" => $message,
             "date" => $date,
-            "localid" => $localid
+            "localid" => $localId,
+            "tag" => $tag
         );
         return $this->execute($path, $params);
     }
