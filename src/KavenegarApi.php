@@ -4,13 +4,14 @@ namespace Kavenegar;
 
 use Kavenegar\Exceptions\ApiException;
 use Kavenegar\Exceptions\HttpException;
-use Kavenegar\Exceptions\RuntimeException;
 
 class KavenegarApi
 {
     const APIPATH = "%s://api.kavenegar.com/v1/%s/%s/%s.json/";
     const VERSION = "1.2.2";
 
+    protected $apiKey;
+    protected $insecure;
     public function __construct($apiKey, $insecure = false)
     {
         if (!extension_loaded('curl')) {
@@ -45,7 +46,7 @@ class KavenegarApi
 
     protected function get_path($method, $base = 'sms')
     {
-        return sprintf(self::APIPATH, $this->insecure == true ? "http" : "https", $this->apiKey, $base, $method);
+        return sprintf(self::APIPATH, $this->insecure ? "http" : "https", $this->apiKey, $base, $method);
     }
 
     protected function execute($url, $data = null)
@@ -70,23 +71,21 @@ class KavenegarApi
 
         $response = curl_exec($handle);
         $code = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-        $content_type = curl_getinfo($handle, CURLINFO_CONTENT_TYPE);
         $curl_errno = curl_errno($handle);
         $curl_error = curl_error($handle);
         if ($curl_errno) {
             throw new HttpException($curl_error, $curl_errno);
         }
         $json_response = json_decode($response);
-        if ($code != 200 && is_null($json_response)) {
+        if ($code !== 200 && is_null($json_response)) {
             throw new HttpException("Request have errors", $code);
-        } else {
-            $json_return = $json_response->return;
-            if ($json_return->status != 200) {
-                throw new ApiException($json_return->message, $json_return->status);
-            }
-            return $json_response->entries;
         }
 
+        $json_return = $json_response->return;
+        if ($json_return->status !== 200) {
+            throw new ApiException($json_return->message, $json_return->status);
+        }
+        return $json_response->entries;
     }
 
     public function SendArray($sender, $receptor, $message, $date = null, $type = null, $localmessageid = null)
@@ -268,10 +267,12 @@ class KavenegarApi
         );
         if (func_num_args() > 5) {
             $arg_list = func_get_args();
-            if (isset($arg_list[6]))
+            if (isset($arg_list[6])) {
                 $params["token10"] = $arg_list[6];
-            if (isset($arg_list[7]))
+            }
+            if (isset($arg_list[7])) {
                 $params["token20"] = $arg_list[7];
+            }
         }
         return $this->execute($path, $params);
     }
