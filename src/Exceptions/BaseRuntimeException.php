@@ -11,7 +11,12 @@ class BaseRuntimeException extends RuntimeException
         parent::__construct($message, $code);
     }
 
-    public function errorMessage()
+    public function __toString()
+    {
+        return $this->errorMessage();
+    }
+
+    final public function errorMessage()
     {
         return "\r\n" . $this->getName() . "[{$this->code}] : {$this->message}\r\n";
     }
